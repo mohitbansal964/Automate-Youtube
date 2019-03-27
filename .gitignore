@@ -1,0 +1,8 @@
+.ipynb_checkpoints/
+venv/
+Development/
+*.pyc
+*.db
+stored_urls.txt
+new_urls.txt
+config.py
