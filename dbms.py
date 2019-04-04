@@ -17,14 +17,20 @@ class Youtube:
 		self.videos= self.db['Videos']
 		self.history= self.db['History']
 
+	def create_playlist(self, name= "", docs= []):
+		'''
+		Create new playlist
+		'''
+		_= self.playlist.insert_one({'name': name, 'list': docs})
+
 	def insert_videos(self, filename= 'new_urls.txt', url_list= []):
 		'''
-		Inserting new urls and their titles in videos collection 
+		Inserting new urls and their titles in videos collection
 		New Urls are present in new_urls.txt
 		'''
 		with open(filename, 'r') as f:
 			urls= f.readlines()
-		
+
 		with open(filename, 'w') as f:
 			f.write('') #Clear file
 
@@ -43,11 +49,15 @@ class Youtube:
 		if len(new_urls)==0:
 			return
 
-		print('\nInserting New Videos...\n')
+		print('\nInserting New Videos...')
 		obj_list= []
 		for url in new_urls:
-			title= self.__get_title(url)
-			obj= {'url': url, 'title': title}
+			try:
+				title= self.__get_title(url)
+			except Exception as e:
+				title= ''
+			print(f'Inserted {title}')
+			obj= {'url': url, 'title': title, 'count': 0}
 			obj_list.append(obj)
 
 		_= self.videos.insert_many(obj_list)
@@ -59,11 +69,11 @@ class Youtube:
 		for title in titles:
 			self.videos.delete_one({'title': title})
 
-	def create_playlist(self, name= "", titles= []):
+	def delete_playlist(self, name= ""):
 		'''
-		Create new playlist
+		Delete playlist from Playlist collection
 		'''
-		_= self.playlist.insert_one({'name': name, 'list': titles})
+		self.playlist.delete_one({'name': name})
 
 	def get_urls(self):
 		'''
@@ -72,19 +82,40 @@ class Youtube:
 		urls= [doc['url'] for doc in self.videos.find({}, {'_id': 0, 'url': 1})]
 		return urls
 
+	def get_titles(self):
+		'''
+		Return a list of titles stored in videos collection
+		'''
+		urls= [doc['title'] for doc in self.videos.find({}, {'_id': 0, 'title': 1})]
+		return urls
+
 	def get_docs(self):
 		'''
 		Return a list of documents stored in videos collection
 		'''
 		docs= [doc for doc in self.videos.find({}, {'_id': 0})]
+		docs= sorted(docs, key= lambda doc: doc['count'], reverse= True)
 		return docs
-		
+
+	def get_playlists(self):
+		'''
+		Return a list of playlists
+		'''
+		docs= [doc for doc in self.playlist.find({}, {'_id': 0})]
+		return docs
+
+	def get_count(self, title= ""):
+		'''
+		Return count of a particular document
+		'''
+		return self.videos.find_one({'title': title}, {'_id': 0, 'count': 1})['count']
+
 	def store_urls(self, out_file= 'stored_urls.txt'):
 		'''
 		Store urls and their titles in a text file
 		'''
-		docs= [doc for doc in self.videos.find({}, {'_id': 0})]
-		vids= [doc['url']+ '  |  '+ doc['title'] for doc in docs]
+		docs= self.get_docs()
+		vids= [doc['url']+ '  |  '+ doc['title']+'\n' for doc in docs]
 		max_length_of_title= max([len(doc['title']) for doc in docs])
 
 		header= ' '*20+ 'Url'+ ' '*20+ '  |  '+ ' '*(max_length_of_title//2 - 3)+ 'Title\n'
@@ -94,6 +125,18 @@ class Youtube:
 			f.write(header)
 			f.write(border)
 			f.writelines(vids)
+
+	def update_count(self, title= "", count= 0):
+		'''
+		Update count of videos.
+		'''
+		self.videos.update_one({'title': title}, { "$set": { "count": count } })
+
+	def update_playlist(self, name= "", titles =[]):
+		'''
+		Update list of videos in a playlist.
+		'''
+		self.playlist.update_one({'name': name}, {'$set': {'list': titles}})
 
 	def __get_title(self, url):
 		'''
@@ -111,5 +154,22 @@ class Youtube:
 
 if __name__== '__main__':
 	obj= Youtube()
+	# print(obj.get_titles())
+	# title= input('title:  ')
+	# print(obj.get_count(title))
+	# docs= obj.get_docs()
+	# print(docs)
+	# name= input('name: ')
+	# title_nums= list(map(int, input('\nEnter title numbers: ').strip().split()))
+	# titles= []
+	# for title_num in title_nums:
+	# 	if title_num>len(docs):
+	# 		continue
+	# 	url= docs[title_num-1]['url']
+	# 	title= docs[title_num-1]['title']
+	# 	titles.append({'title': title, 'url': url})
+	# obj.create_playlist(name= name, docs= titles)
+	# print(obj.get_playlists())
+	# print(obj.get_docs())
 	# obj.insert_videos()
 	# obj.store_urls()

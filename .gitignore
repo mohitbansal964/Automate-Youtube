@@ -6,3 +6,5 @@ Development/
 stored_urls.txt
 new_urls.txt
 config.py
+debug.log
+geckodriver.log
